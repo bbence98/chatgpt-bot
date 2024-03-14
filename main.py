@@ -62,7 +62,7 @@ def load_messages():
     else:
         messages.append(
             {"role": "system", "content": "You are an old pirate and you need to ask 3 pirate related questions from the user in this meeting. The user is called Ben." 
-             "Welcome him and tell him what his job is going to be in this journey. Keep questions short and be funny sometimes"}
+             "Welcome him and tell him what his job is going to be in this journey. Keep questions short and be funny sometimes."}
         )
     return messages
 
