@@ -27,7 +27,6 @@ async def post_audio(file: UploadFile):
 def transcribe_audio(file):
     audio_file= open(file.filename, "rb")
     transcript = openai.audio.transcriptions.create(model="whisper-1",file=audio_file)
-    #transcript = {"role": "user", "content": "Hello"},
     #print(transcript)
     return transcript
 
@@ -35,15 +34,13 @@ def get_chat_response(user_message):
     messages = load_messages()
     messages.append({"role": "user", "content": user_message.text})
     
-    #gpt_response = {"role": "assistant", "content": "Welcome you to the meeting. I'm the old pirate and you need to answer 3 of my questions."}
     gpt_response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=messages
         )
     
-    parsed_gpt_response = gpt_response.choices[0].message.content
-    print(parsed_gpt_response)
-    
+    parsed_gpt_response = gpt_response.choices[0].message
+    #print(parsed_gpt_response)
     save_messages(user_message.text, parsed_gpt_response)
     
     
@@ -71,7 +68,7 @@ def save_messages(user_message, gpt_response):
     file = "database.json"
     messages = load_messages()
     messages.append({"role": "user", "content": user_message})
-    messages.append({"role": "assistant", "content": gpt_response})
+    messages.append({"role": gpt_response.role, "content": gpt_response.content})
     with open(file, 'w') as f:
         json.dump(messages, f)
         
