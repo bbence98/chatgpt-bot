@@ -177,5 +177,5 @@ pyrightconfig.json
 
 *.mp3
 
-# Amazon DocumentDB CA certificate
-global-bundle.pem
+# key pairs
+*.pem

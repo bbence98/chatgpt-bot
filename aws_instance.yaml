@@ -1,0 +1,90 @@
+Description:  This template deploys an EC2 instance, and downloads the latest gpt project from github.
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: DEV
+
+  ProjectName:
+    Description: A project name that is prefixed to resource names
+    Type: String
+    Default: gpt
+
+  AMI:
+    Description: ID of the AMI
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+  AvailabilityZone:
+    Description: Choose an AZ
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  Subnet:
+    Description: Choose a subnet
+    Type: AWS::EC2::Subnet::Id
+  
+  VPC:
+    Description: Choose a VPC
+    Type: AWS::EC2::VPC::Id
+
+  SShKey:
+    Description: Choose a Key-Pair
+    Type: AWS::EC2::KeyPair::KeyName
+
+  InstanceSecurityGroup:
+    Description: Choose a security group
+    Type: AWS::EC2::SecurityGroup::Id
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      ImageId: !Ref AMI
+      InstanceType: t2.micro
+      KeyName: !Ref SShKey
+      SecurityGroupIds:
+      - !Ref InstanceSecurityGroup
+      VpcId: !Ref VPC
+      SubnetId: !Ref Subnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum install -y git gcc openssl-devel bzip2-devel libffi-devel
+          cd /home/ec2-user
+          git clone https://github.com/bbence98/chatgpt-bot.git
+
+          cd /tmp
+          wget https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tgz
+          tar xvf Python-3.8.0.tgz
+          cd Python-3.8.0
+          ./configure --enable-optimizations
+          sudo make install
+
+      Tags:
+      - Key: Environment
+        Value: !Sub ${EnvironmentName}
+      - Key: Project
+        Value: !Sub ${ProjectName}
+      - Key: Name
+        Value: !Sub ${EnvironmentName}-${ProjectName}-instance
+
+
+
+Outputs:
+  EC2InstanceID:
+    Description: A reference to the created instance
+    Value: !Ref EC2Instance
+
+  EC2InstancePrivateDnsName:
+    Description: Private DNS Name
+    Value: !GetAtt EC2Instance.PrivateDnsName
+
+  EC2InstancePublicDnsName:
+    Description: Public DNS Name
+    Value: !GetAtt EC2Instance.PublicDnsName
+
+
+
+

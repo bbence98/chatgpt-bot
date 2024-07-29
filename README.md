@@ -1,1 +1,1 @@
-Create a Talking ChatGPT Interview Bot Project
+Create a Talking ChatGPT Bot Project
