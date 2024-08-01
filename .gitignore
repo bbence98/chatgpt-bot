@@ -179,3 +179,8 @@ pyrightconfig.json
 
 # key pairs
 *.pem
+
+webapp/*
+
+# my bash scripts
+create_aws_network.sh
