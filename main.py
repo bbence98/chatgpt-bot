@@ -2,16 +2,15 @@ from fastapi import FastAPI, UploadFile
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
-from botocore.config import Config
 
 import os
-import sys
 import openai
 import json
 import requests
 import json
 import os
 import boto3
+import time
 
 load_dotenv()
 
@@ -24,17 +23,20 @@ aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 app = FastAPI()
 
-TABLE_NAME = "chat_database"
+TABLE_NAME = "chat3"
 
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(TABLE_NAME)
+dynamodb_resource = boto3.resource("dynamodb")
+dynamodb_client = boto3.client("dynamodb")
+table = dynamodb_resource.Table(TABLE_NAME)
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Sorry, no frontend. For APIs, check <this-site>/docs"}
+
 
 @app.post("/talk")
-async def post_audio(file: UploadFile):
+async def post_audio(file: UploadFile):    
+    await save_file(file)
     user_message = transcribe_audio(file)
     chat_response = get_chat_response(user_message)
     audio_output = text_to_speech(chat_response.content)
@@ -43,6 +45,13 @@ async def post_audio(file: UploadFile):
         yield audio_output
 
     return StreamingResponse(iterfile(), media_type="audio/mpeg")
+
+
+async def save_file(file): 
+    with open(file.filename, 'wb') as f:
+        content = await file.read()
+        f.write(content)
+        print(f"Received file named: {file.filename} ,containing: {len(content)} bytes. ")
 
 
 def transcribe_audio(file):
@@ -66,21 +75,19 @@ def get_chat_response(user_message):
     save_messages_dynamodb(user_message.text, parsed_gpt_response) # saves messages to aws dynamodb table
     return parsed_gpt_response
 
+def count_dynamodb_items():
+    res = table.scan(**{"TableName":TABLE_NAME})
+    return res["Count"]
 
-def load_dynamodb_table():
-    # Check if the table exists, if not, then create it
-    try:
-        table.load()
-    except ClientError as err:
-        if err.response["Error"]["Code"] == "ResourceNotFoundException":
-            dynamodb.create_table(
+def create_dynamodb_table():
+    response = dynamodb_client.create_table(
+                TableName=TABLE_NAME,
                 AttributeDefinitions=[
                     {
                         'AttributeName': 'ID',
                         'AttributeType': 'S'
                     },
                 ],
-                TableName=TABLE_NAME,
                 KeySchema=[
                     {
                         'AttributeName': 'ID',
@@ -89,27 +96,34 @@ def load_dynamodb_table():
                 ],
                 BillingMode='PROVISIONED',
                 ProvisionedThroughput={
-                    'ReadCapacityUnits': 1,
-                    'WriteCapacityUnits': 1
+                    'ReadCapacityUnits': 10,
+                    'WriteCapacityUnits': 10
                 },
             )
-
-
-def count_dynamodb_items():
-    res = table.scan(**{"TableName":TABLE_NAME})
-    return res["Count"]
+    while True:
+        response = table.meta.client.describe_table(TableName=TABLE_NAME)
+        print(response['Table']['TableStatus'])
+        time.sleep(2)
+        if response['Table']['TableStatus'] == 'ACTIVE':
+            break
 
 
 def load_messages_dynamodb():
-    messages = []  
-    load_dynamodb_table()
+    try:
+        table.load()
+    except ClientError as err:
+        if err.response["Error"]["Code"] == "ResourceNotFoundException":
+            create_dynamodb_table()
+            
+    messages = []
     count = count_dynamodb_items()
+    print("count: ", count)
     empty = count == 0
     #print("empty: ", empty)
     
     if not empty:
         for i in range(count):
-            items = dynamodb.batch_get_item(
+            items = dynamodb_resource.batch_get_item(
                 RequestItems={
                     TABLE_NAME: {
                         "Keys": [
@@ -130,7 +144,7 @@ def load_messages_dynamodb():
             }
         )
         
-        items = dynamodb.batch_get_item(
+        items = dynamodb_resource.batch_get_item(
             RequestItems={
                 TABLE_NAME: {
                     "Keys": [
