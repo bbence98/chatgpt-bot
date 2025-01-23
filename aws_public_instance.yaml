@@ -1,0 +1,135 @@
+Description:  This template deploys an EC2 instance with the chatgpt-bot project user data.
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: DEV
+
+  ProjectName:
+    Description: A project name that is prefixed to resource names
+    Type: String
+    Default: gpt
+
+  AMI:
+    Description: Choose the OS system of the EC2 instance
+    Type: String
+    Default: Ubuntu
+    #Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 # for amazon linux (centOS)
+    AllowedValues:
+      - Ubuntu
+      - Amazon
+
+  AvailabilityZone:
+    Description: Choose an AZ
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  Subnet:
+    Description: Choose a subnet
+    Type: AWS::EC2::Subnet::Id
+  
+  VPC:
+    Description: Choose a VPC
+    Type: AWS::EC2::VPC::Id
+
+  SShKey:
+    Description: Choose a Key-Pair
+    Type: AWS::EC2::KeyPair::KeyName
+
+  InstanceSecurityGroup:
+    Description: Choose a security group
+    Type: AWS::EC2::SecurityGroup::Id
+
+Mappings:
+  AMIToOS:
+    Ubuntu:
+      ImageId: ami-0e872aee57663ae2d
+      user: ubuntu
+    Amazon:
+      ImageId: ami-071878317c449ae48
+      user: ec2-user
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      ImageId: !FindInMap [AMIToOS, !Ref AMI, ImageId]
+      InstanceType: t2.micro
+      KeyName: !Ref SShKey
+      SecurityGroupIds:
+      - !Ref InstanceSecurityGroup
+      VpcId: !Ref VPC
+      SubnetId: !Ref Subnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt update 
+          apt upgrade -y
+          apt install -y git python3-pip python3.12-full unzip nginx
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+          cd /tmp
+          unzip ./awscliv2.zip
+          sudo ./aws/install 
+          mkdir /home/ubuntu/.aws
+          echo -e '[default]\nregion=eu-central-1' > /home/ubuntu/.aws/config
+          cat <<EOF > /etc/nginx/sites-enabled/gpt_nginx
+          server {
+            listen 80;
+            server_name 3.124.244.58;
+            location / {
+                proxy_pass http://127.0.0.1:8000;
+            }
+          }
+          EOF
+          cd /home/ubuntu
+          git clone https://github.com/bbence98/chatgpt-bot.git
+          chown -R ubuntu /home/ubuntu/chatgpt-bot
+          cd chatgpt-bot
+          python3 -m venv venv
+          source /venv/bin/activate
+          pip install -r requirements.txt
+
+      Tags:
+      - Key: Environment
+        Value: !Sub ${EnvironmentName}
+      - Key: Project
+        Value: !Sub ${ProjectName}
+      - Key: Name
+        Value: !Sub ${ProjectName}-${EnvironmentName}-public-instance
+
+Outputs:
+  EC2InstanceID:
+    Description: A reference to the created instance
+    Value: !Ref EC2Instance
+
+  EC2InstancePrivateDnsName:
+    Description: Private DNS Name
+    Value: !GetAtt EC2Instance.PrivateDnsName
+
+  EC2InstancePrivateIP:
+    Description: Private IP Address of the instance
+    Value: !GetAtt EC2Instance.PrivateIp
+
+  EC2InstancePublicDnsName:
+    Description: Public DNS Name
+    Value: !GetAtt EC2Instance.PublicDnsName
+
+  EC2InstancePublicIP:
+    Description: Public IP Address of the instance
+    Value: !GetAtt EC2Instance.PublicIp
+
+  KeyPairName:
+    Description: Name of the used Key Pair
+    Value: !Ref SShKey
+
+  User:
+    Value: !FindInMap [AMIToOS, !Ref AMI, user]
+
+  SSHCommand:
+    Description: Copy to ssh to the device
+    Value: !Sub ssh -i ${SShKey}.pem ubuntu@${EC2Instance.PublicIp}
+
+  WebsiteURL:
+    Description: WebApp URL
+    Value: !Sub http://${EC2Instance.PublicIp}
