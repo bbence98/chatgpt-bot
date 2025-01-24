@@ -1,6 +1,6 @@
-Description:  This template deploys a VPC, with a pair of public and private subnets spread
-  across two Availability Zones. It deploys an internet gateway, with a default
-  route on the public subnets, and a NAT gateway with a default route on the the private subnets.
+Description:  This template deploys a VPC, with a public and private subnet. It deploys an internet gateway, with a default 
+  route on the public subnet, and a NAT gateway with a default route on the the private subnet.
+  Finally it creates a security group to allow ingress traffic for HTTP and SSH from anywhere, and the corresponding SSH key.
 
 Parameters:
   EnvironmentName:
@@ -18,25 +18,16 @@ Parameters:
     Type: String
     Default: 120.20.0.0/16
 
-  PublicSubnet1CIDR:
+  PublicSubnetCIDR:
     Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
     Type: String
     Default: 120.20.10.0/24
 
-  PublicSubnet2CIDR:
-    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+  PrivateSubnetCIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
     Type: String
     Default: 120.20.20.0/24
 
-  PrivateSubnet1CIDR:
-    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
-    Type: String
-    Default: 120.20.100.0/24
-
-  PrivateSubnet2CIDR:
-    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
-    Type: String
-    Default: 120.20.200.0/24
 
 Resources:
   VPC:
@@ -62,61 +53,39 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
 
-  PublicSubnet1:
+  PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: eu-central-1a
-      CidrBlock: !Ref PublicSubnet1CIDR
+      CidrBlock: !Ref PublicSubnetCIDR
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-public-subnet-1
 
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: eu-central-1b
-      CidrBlock: !Ref PublicSubnet2CIDR
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectName}-public-subnet-2
-
-  PrivateSubnet1:
+  PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: eu-central-1a
-      CidrBlock: !Ref PrivateSubnet1CIDR
+      CidrBlock: !Ref PrivateSubnetCIDR
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-private-subnet-1
 
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: eu-central-1b
-      CidrBlock: !Ref PrivateSubnet2CIDR
-      MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectName}-private-subnet-2
-
-  NatGateway1EIP:
+  NatGatewayEIP:
     Type: AWS::EC2::EIP
     DependsOn: InternetGatewayAttachment
     Properties:
       Domain: vpc
 
-  NatGateway1:
+  NatGateway:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt NatGateway1EIP.AllocationId
-      SubnetId: !Ref PublicSubnet1
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-NAT
@@ -137,18 +106,11 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnet1RouteTableAssociation:
+  PublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnet1
-
-  PublicSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnet2
-
+      SubnetId: !Ref PublicSubnet
 
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -163,19 +125,13 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway1
+      NatGatewayId: !Ref NatGateway
 
-  PrivateSubnet1RouteTableAssociation:
+  PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable
-      SubnetId: !Ref PrivateSubnet1
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId: !Ref PrivateSubnet2
+      SubnetId: !Ref PrivateSubnet
 
   SSHKeyName:
     Type: AWS::EC2::KeyPair
@@ -189,11 +145,11 @@ Resources:
         - Key: Project
           Value: !Sub ${ProjectName}
 
-  EC2SecurityGroup:
+  PublicEC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub ${ProjectName}-sg
-      GroupDescription: Enable SSH and HTTP traffic
+      GroupName: !Sub ${ProjectName}-${EnvironmentName}-public-sg
+      GroupDescription: Enable ingress SSH and HTTP traffic
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -211,38 +167,22 @@ Resources:
           Value: !Sub ${ProjectName}
 
 Outputs:
-  VPC:
+  VPCId:
     Description: A reference to the created VPC
     Value: !Ref VPC
 
-  PublicSubnets:
-    Description: A list of the public subnets
-    Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
+  PublicSubnetId:
+    Description: A reference to the public subnet
+    Value: !Ref PublicSubnet
 
-  PrivateSubnets:
-    Description: A list of the private subnets
-    Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
+  PrivateSubnetId:
+    Description: A reference to the private subnet
+    Value: !Ref PrivateSubnet
 
-  PublicSubnet1:
-    Description: A reference to the public subnet in the 1st Availability Zone
-    Value: !Ref PublicSubnet1
-
-  PublicSubnet2:
-    Description: A reference to the public subnet in the 2nd Availability Zone
-    Value: !Ref PublicSubnet2
-
-  PrivateSubnet1:
-    Description: A reference to the private subnet in the 1st Availability Zone
-    Value: !Ref PrivateSubnet1
-
-  PrivateSubnet2:
-    Description: A reference to the private subnet in the 2nd Availability Zone
-    Value: !Ref PrivateSubnet2
-
-  SSHKeyPair:
+  SSHKeyPairName:
     Description: A reference to the created KeyPair
     Value: !Ref SSHKeyName
 
-  SecurityGroup:
-    Description: Reference to the created security group with allowed HTTP and SSH traffic
-    Value: !Ref EC2SecurityGroup
+  PublicSecurityGroupId:
+    Description: Reference to the created security group with allowed ingress HTTP and SSH traffic
+    Value: !Ref PublicEC2SecurityGroup
