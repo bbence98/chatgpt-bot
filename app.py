@@ -9,6 +9,7 @@ import requests
 import json
 import os
 import time
+import redis
 
 import dynamodb
 import localdb
@@ -21,6 +22,7 @@ openai.organization = os.getenv("OPEN_AI_ORG")
 elevenlabs_key = os.getenv("ELEVENLABS_KEY")
 
 app = FastAPI()
+cache = redis.Redis(host='redis', port=6379)
 
 # Choose the database that you want to use
 dbservice = localdb
@@ -30,7 +32,21 @@ dbservice = localdb
 
 @app.get("/")
 async def root():
-    return {"message": "Sorry, no frontend. For APIs, check <this-site>/docs"}
+    count = get_hit_count()
+    return {"message": f"Sorry, no frontend, hence you visited this site {count} times. :D",
+            "API": "For APIs, check localhost/docs"}
+
+
+def get_hit_count():
+    retries = 5
+    while True:
+        try:
+            return cache.incr('hits')
+        except redis.exceptions.ConnectionError as exc:
+            if retries == 0:
+                raise exc
+            retries -= 1
+            time.sleep(0.5)
 
 
 @app.post("/talk")
