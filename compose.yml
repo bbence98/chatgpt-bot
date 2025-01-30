@@ -7,5 +7,28 @@ services:
       - "8765:8700"
     deploy:
       mode: global
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "1"
+        max-size: "100k"
   redis:
     image: "redis:alpine"
+    depends_on:
+      - backend
+  nginx:
+      image: nginx
+      ports:
+        - "80:80"
+        # - "443:443"
+      volumes:
+        - ./nginx:/etc/nginx/conf.d
+      restart: unless-stopped
+      depends_on:
+        - backend
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "100k"
+          max-file: "1"

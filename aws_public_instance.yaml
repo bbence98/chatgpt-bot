@@ -66,30 +66,8 @@ Resources:
           #!/bin/bash
           apt update 
           apt upgrade -y
-          apt install -y git python3-pip python3.12-full unzip nginx
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
-          cd /tmp
-          unzip ./awscliv2.zip
-          sudo ./aws/install 
-          mkdir /home/ubuntu/.aws
-          echo -e '[default]\nregion=eu-central-1' > /home/ubuntu/.aws/config
-          cat <<EOF > /etc/nginx/sites-enabled/gpt_nginx
-          server {
-            listen 80;
-            server_name 3.124.244.58;
-            location / {
-                proxy_pass http://127.0.0.1:8000;
-            }
-          }
-          EOF
-          cd /home/ubuntu
-          git clone https://github.com/bbence98/chatgpt-bot.git
-          chown -R ubuntu /home/ubuntu/chatgpt-bot
-          cd chatgpt-bot
-          python3 -m venv venv
-          source /venv/bin/activate
-          pip install -r requirements.txt
-
+          apt install -y docker
+          
       Tags:
       - Key: Environment
         Value: !Sub ${EnvironmentName}
