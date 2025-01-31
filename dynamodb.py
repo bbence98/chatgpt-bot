@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
+from botocore.config import Config
 
 import os
 import time
@@ -11,9 +12,19 @@ aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
 aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 TABLE_NAME = "chat"
+REGION_NAME = "eu-central-1"
 
-dynamodb_resource = boto3.resource("dynamodb")
-dynamodb_client = boto3.client("dynamodb")
+chatgpt_config = Config(
+    region_name = REGION_NAME,
+    signature_version = 'v4',
+    retries = {
+        'max_attempts': 10,
+        'mode': 'standard'
+    }
+)
+
+dynamodb_resource = boto3.resource("dynamodb", config=chatgpt_config)
+dynamodb_client = boto3.client("dynamodb", config=chatgpt_config)
 table = dynamodb_resource.Table(TABLE_NAME)
 
 
