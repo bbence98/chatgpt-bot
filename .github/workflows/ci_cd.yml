@@ -1,4 +1,4 @@
-name: Build, Push, Deploy.
+name: Build, Push, Deploy chatgpt-bot.
 
 on:
   push:
@@ -51,7 +51,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            docker compose down
-            docker rmi -f $(docker images -q)
-            docker compose pull
-            docker compose up -d
+            sudo docker compose down
+            sudo docker rmi -f $(docker images -q)
+            sudo docker compose pull
+            sudo docker compose up -d
