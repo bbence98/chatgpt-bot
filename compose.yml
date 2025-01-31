@@ -4,7 +4,7 @@ services:
   backend:
     networks:
       - frontend
-    build: .
+    image: bbence98/chatgpt-bot_backend
     deploy:
       mode: global
     restart: unless-stopped
