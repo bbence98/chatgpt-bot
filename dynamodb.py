@@ -12,9 +12,10 @@ aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
 aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 TABLE_NAME = "chat"
+REGION_NAME = "eu-central-1"
 
 chatgpt_config = Config(
-    region_name = 'eu-central-1',
+    region_name = REGION_NAME,
     signature_version = 'v4',
     retries = {
         'max_attempts': 10,
