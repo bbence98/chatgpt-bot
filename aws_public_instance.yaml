@@ -67,7 +67,9 @@ Resources:
           apt update 
           apt upgrade -y
           apt install -y docker
-          
+          service docker start
+          usermod -a -G docker ubuntu
+          chkconfig docker on
       Tags:
       - Key: Environment
         Value: !Sub ${EnvironmentName}
