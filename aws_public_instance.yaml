@@ -66,7 +66,7 @@ Resources:
           #!/bin/bash
           apt update 
           apt upgrade -y
-          apt install -y docker
+          snap install docker
           service docker start
           usermod -a -G docker ubuntu
           chkconfig docker on
