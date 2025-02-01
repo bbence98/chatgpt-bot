@@ -1,4 +1,4 @@
-name: Deploy chatgpt-bot to ${{ secrets.HOST }}
+name: Deploy chatgpt-bot to AWS EC2 public instance
 
 on:
   pull_request:
