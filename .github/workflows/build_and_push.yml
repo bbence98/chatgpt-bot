@@ -31,29 +31,3 @@ jobs:
           push: true
           tags: bbence98/chatgpt-bot_backend:latest
           labels: ${{ steps.meta.outputs.labels }}
-  deploy:
-    runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/cicd' }}
-    needs: [ build_and_push ]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: copy file via ssh key
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          source: "compose.yml, nginx/nginx.conf"
-          target: .
-      - name: run docker-compose
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          script: |
-            sudo docker compose down
-            sudo docker rmi -f $(docker images -q)
-            sudo docker compose pull
-            sudo docker compose up -d
