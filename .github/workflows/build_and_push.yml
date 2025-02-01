@@ -1,8 +1,10 @@
-name: Build, Push, Deploy chatgpt-bot.
+name: Build & Push chatgpt-bot
 
 on:
   push:
-    branches: [ cicd ]
+    branches:
+      - '*'
+      - '!main'
 jobs:
   build_and_push:
     runs-on: ubuntu-latest
