@@ -24,7 +24,7 @@ services:
       networks:
         - frontend
       ports:
-        - "80:80"
+        - "81:80"
         # - "443:443"
       volumes:
         - ./nginx:/etc/nginx/conf.d
@@ -39,4 +39,7 @@ services:
 
 networks:
   frontend:
-    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "100.120.42.0/24"

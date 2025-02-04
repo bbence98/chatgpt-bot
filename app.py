@@ -33,7 +33,7 @@ dbservice = localdb
 @app.get("/")
 async def root():
     count = get_hit_count()
-    return {"message": f"Sorry, no frontend, hence you visited this site {count} times. :D",
+    return {"message": f"Sorry, no frontend, despite this, you visited this site {count} times. :D",
             "API": "For APIs, check localhost/docs"}
 
 
